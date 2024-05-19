@@ -92,5 +92,4 @@ def main():
             header()
             user_input = input("Masukkan opsi: ")
             
-if __name__ == '__main__':
-    main()
+main()
