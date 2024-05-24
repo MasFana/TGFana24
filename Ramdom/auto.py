@@ -1,28 +1,52 @@
-from time import sleep
-import win32gui, win32ui, win32con, win32api
+import threading
+import time
+from pynput import keyboard
 
-def main():
-    window_name = "Calculator"
-    hwnd = win32gui.FindWindow(None, window_name)
-    win = win32ui.CreateWindowFromHandle(hwnd)
-    win32gui.SetForegroundWindow(hwnd)
-    win.SendMessage(win32con.WM_KEYDOWN, win32con.WM_KEYDOWN, 0)
+class KeyPresser:
+    def __init__(self):
+        self.is_active = False
+        self.interval = 0.1  # Time interval in seconds
+        self.listener = keyboard.Listener(on_press=self.on_press)
+        self.listener.start()
+        self.thread = threading.Thread(target=self.press_keys)
+        self.thread.daemon = True
 
-def list_window_names():
-    def winEnumHandler(hwnd, ctx):
-        if win32gui.IsWindowVisible(hwnd):
-            print(hex(hwnd), '"' + win32gui.GetWindowText(hwnd) + '"')
-    win32gui.EnumWindows(winEnumHandler, None)
+    def on_press(self, key):
+        try:
+            if key.char == 't':  # Toggle key (change 't' to any key you prefer)
+                self.is_active = not self.is_active
+                if self.is_active:
+                    print("Macro started")
+                else:
+                    print("Macro stopped")
+        except AttributeError:
+            if key == keyboard.Key.esc:  # Exit key
+                return False
 
+    def press_keys(self):
+        from pynput.keyboard import Controller
+        controller = Controller()
+        while True:
+            if self.is_active:
+                controller.press('f')
+                controller.release('f')
+                time.sleep(self.interval)
+                controller.press(keyboard.Key.space)
+                controller.release(keyboard.Key.space)
+                time.sleep(self.interval)
+            else:
+                time.sleep(0.1)
 
-def get_inner_windows(whndl):
-    def callback(hwnd, hwnds):
-        if win32gui.IsWindowVisible(hwnd) and win32gui.IsWindowEnabled(hwnd):
-            hwnds[win32gui.GetClassName(hwnd)] = hwnd
-        return True
-    hwnds = {}
-    win32gui.EnumChildWindows(whndl, callback, hwnds)
-    return hwnds
+    def start(self):
+        self.thread.start()
 
-list_window_names()
-main()
+if __name__ == "__main__":
+    key_presser = KeyPresser()
+    key_presser.start()
+
+    # Keep the main thread alive to listen for key presses
+    try:
+        while True:
+            time.sleep(1)
+    except KeyboardInterrupt:
+        print("Exiting program")
